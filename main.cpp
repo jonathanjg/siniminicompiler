@@ -4,6 +4,8 @@
 #include <cctype>
 
 enum class TokenType {
+    Let,
+    Print,
     Word,
     Number,
     Plus,
@@ -22,6 +24,10 @@ struct Token {
 
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
+        case TokenType::Let:
+            return "LET";
+        case TokenType::Print:
+            return "PRINT";
         case TokenType::Word:
             return "WORD";
         case TokenType::Number:
@@ -66,7 +72,13 @@ std::vector<Token> lex(const std::string& source) {
                 i++;
             }
 
-            tokens.push_back({TokenType::Word, word});
+            if (word == "let") {
+                tokens.push_back({TokenType::Let, word});
+            } else if (word == "print") {
+                tokens.push_back({TokenType::Print, word});
+            } else {
+                tokens.push_back({TokenType::Word, word});
+            }
             continue;
         }
 
@@ -127,7 +139,7 @@ std::vector<Token> lex(const std::string& source) {
 }
 
 int main() {
-    std::string source = "let x = 10 + 2 * 3 / 4 - 1;";
+    std::string source = "let x = 10 + 2 * 3 / 4 - 1; print x";
 
     std::vector<Token> tokens = lex(source);
 
