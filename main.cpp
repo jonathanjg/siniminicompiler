@@ -147,6 +147,14 @@ bool isOperator(TokenType type) {
     return type == TokenType::Plus || type == TokenType::Minus || type == TokenType::Star || type == TokenType::Slash;
 }
 
+bool isExpressionOperator(TokenType type) {
+    return type == TokenType::Plus || type == TokenType::Minus;
+}
+
+bool isTermOperator(TokenType type) {
+    return type == TokenType::Star || type == TokenType::Slash;
+}
+
 int applyOperator(int left, TokenType op, int right) {
     if (op == TokenType::Plus) {
         return left + right;
@@ -218,7 +226,59 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
 
     std::cout << "Valid print statement!" << std::endl;
 }
+int parseNumberValue(const std::vector<Token>& tokens, int& i) {
+    if (tokens[i].type != TokenType::Number) {
+        std::cout << "Error: expected number" << std::endl;
+        return 0;
+    }
 
+    int value = std::stoi(tokens[i].text);
+    i++;
+    return value;
+}
+
+int parseTerm(const std::vector<Token>& tokens, int& i) {
+    int result = parseNumberValue(tokens, i);
+
+    while (isTermOperator(tokens[i].type)) {
+        TokenType op = tokens[i].type;
+        i++;
+
+        int right = parseNumberValue(tokens, i);
+
+        if (op == TokenType::Star) {
+            result = result * right;
+        } else if (op == TokenType::Slash) {
+            if (right == 0) {
+                std::cout << "Error: division by zero" << std::endl;
+                return 0;
+            }
+
+            result = result / right;
+        }
+    }
+
+    return result;
+}
+
+int parseExpression(const std::vector<Token>& tokens, int& i) {
+    int result = parseTerm(tokens, i);
+
+    while (isExpressionOperator(tokens[i].type)) {
+        TokenType op = tokens[i].type;
+        i++;
+
+        int right = parseTerm(tokens, i);
+
+        if (op == TokenType::Plus) {
+            result = result + right;
+        } else if (op == TokenType::Minus) {
+            result = result - right;
+        }
+    }
+
+    return result;
+}
 // Eval
 void evaluatePrintStatement(const std::vector<Token>& tokens) {
     int i = 0;
@@ -229,27 +289,7 @@ void evaluatePrintStatement(const std::vector<Token>& tokens) {
     }
     i++;
 
-    if (tokens[i].type != TokenType::Number) {
-        std::cout << "Error: evaluator currently only supports numbers" << std::endl;
-        return;
-    }
-
-    int result = std::stoi(tokens[i].text);
-    i++;
-
-    while (isOperator(tokens[i].type)) {
-        TokenType op = tokens[i].type;
-        i++;
-
-        if (tokens[i].type != TokenType::Number) {
-            std::cout << "Error: evaluator currently only supports numbers after operator" << std::endl;
-            return;
-        }
-
-        int right = std::stoi(tokens[i].text);
-        result = applyOperator(result, op, right);
-        i++;
-    }
+    int result = parseExpression(tokens, i);
 
     if (tokens[i].type != TokenType::Semicolon) {
         std::cout << "Error: expected ';' after expression" << std::endl;
