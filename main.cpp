@@ -142,6 +142,9 @@ std::vector<Token> lex(const std::string& source) {
 bool isValue(TokenType type) {
     return type == TokenType::Number || type == TokenType::Word;
 }
+bool isOperator(TokenType type) {
+    return type == TokenType::Plus || type == TokenType::Minus || type == TokenType::Star || type == TokenType::Slash;
+}
 
 void parsePrintStatement(const std::vector<Token>& tokens) {
     int i = 0;
@@ -163,11 +166,11 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
     }
     i++;
 
-    if (tokens[i].type == TokenType::Plus) {
+    while (isOperator(tokens[i].type)) {
         i++;
 
         if (!isValue(tokens[i].type)) {
-            std::cout << "Error: expected number or variable after '+'" << std::endl;
+            std::cout << "Error: expected number or variable after operator" << std::endl;
             return;
         }
 
@@ -175,7 +178,7 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
     }
 
     if (tokens[i].type != TokenType::Semicolon) {
-        std::cout << "Error: expected ';' after number" << std::endl;
+        std::cout << "Error: expected ';' after expression" << std::endl;
         return;
     }
     i++;
@@ -189,7 +192,7 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
 }
 
 int main() {
-    std::string source = "print x+343;";
+    std::string source = "print x +2;";
 
     std::vector<Token> tokens = lex(source);
 
