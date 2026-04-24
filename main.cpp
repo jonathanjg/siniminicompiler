@@ -138,10 +138,62 @@ std::vector<Token> lex(const std::string& source) {
     return tokens;
 }
 
+// Helper Functions
+bool isValue(TokenType type) {
+    return type == TokenType::Number || type == TokenType::Word;
+}
+
+void parsePrintStatement(const std::vector<Token>& tokens) {
+    int i = 0;
+
+    // // second debug loop
+    // for (const auto& t : tokens) {
+    //     std::cout << tokenTypeToString(t.type) << ": " << t.text << "\n";
+    // }
+
+    if (tokens[i].type != TokenType::Print) {
+        std::cout << "Error: expected 'print'" << std::endl;
+        return;
+    }
+    i++;
+
+    if (!isValue(tokens[i].type)) {
+        std::cout << "Error: expected number or variable after 'print'" << std::endl;
+        return;
+    }
+    i++;
+
+    if (tokens[i].type == TokenType::Plus) {
+        i++;
+
+        if (!isValue(tokens[i].type)) {
+            std::cout << "Error: expected number or variable after '+'" << std::endl;
+            return;
+        }
+
+        i++;
+    }
+
+    if (tokens[i].type != TokenType::Semicolon) {
+        std::cout << "Error: expected ';' after number" << std::endl;
+        return;
+    }
+    i++;
+
+    if (tokens[i].type != TokenType::End) {
+        std::cout << "Error: unexpected tokens after statement" << std::endl;
+        return;
+    }
+
+    std::cout << "Valid print statement!" << std::endl;
+}
+
 int main() {
-    std::string source = "let x = 10 + 2 * 3 / 4 - 1; print x";
+    std::string source = "print x+343;";
 
     std::vector<Token> tokens = lex(source);
+
+    std::cout << "=== TOKENS ===" << std::endl;
 
     for (const Token& token : tokens) {
         std::cout << tokenTypeToString(token.type);
@@ -152,6 +204,11 @@ int main() {
 
         std::cout << std::endl;
     }
+
+    std::cout << std::endl;
+    std::cout << "=== PARSER ===" << std::endl;
+
+    parsePrintStatement(tokens);
 
     return 0;
 }
