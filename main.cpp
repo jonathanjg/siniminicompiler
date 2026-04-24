@@ -142,10 +142,38 @@ std::vector<Token> lex(const std::string& source) {
 bool isValue(TokenType type) {
     return type == TokenType::Number || type == TokenType::Word;
 }
+
 bool isOperator(TokenType type) {
     return type == TokenType::Plus || type == TokenType::Minus || type == TokenType::Star || type == TokenType::Slash;
 }
 
+int applyOperator(int left, TokenType op, int right) {
+    if (op == TokenType::Plus) {
+        return left + right;
+    }
+
+    if (op == TokenType::Minus) {
+        return left - right;
+    }
+
+    if (op == TokenType::Star) {
+        return left * right;
+    }
+
+    if (op == TokenType::Slash) {
+        if (right == 0) {
+            std::cout << "Error: division by zero" << std::endl;
+            return 0;
+        }
+
+        return left / right;
+    }
+
+    std::cout << "Error: unknown operator" << std::endl;
+    return 0;
+}
+
+// Parser
 void parsePrintStatement(const std::vector<Token>& tokens) {
     int i = 0;
 
@@ -191,8 +219,47 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
     std::cout << "Valid print statement!" << std::endl;
 }
 
+// Eval
+void evaluatePrintStatement(const std::vector<Token>& tokens) {
+    int i = 0;
+
+    if (tokens[i].type != TokenType::Print) {
+        std::cout << "Error: expected 'print'" << std::endl;
+        return;
+    }
+    i++;
+
+    if (tokens[i].type != TokenType::Number) {
+        std::cout << "Error: evaluator currently only supports numbers" << std::endl;
+        return;
+    }
+
+    int result = std::stoi(tokens[i].text);
+    i++;
+
+    while (isOperator(tokens[i].type)) {
+        TokenType op = tokens[i].type;
+        i++;
+
+        if (tokens[i].type != TokenType::Number) {
+            std::cout << "Error: evaluator currently only supports numbers after operator" << std::endl;
+            return;
+        }
+
+        int right = std::stoi(tokens[i].text);
+        result = applyOperator(result, op, right);
+        i++;
+    }
+
+    if (tokens[i].type != TokenType::Semicolon) {
+        std::cout << "Error: expected ';' after expression" << std::endl;
+        return;
+    }
+
+    std::cout << "Result: " << result << std::endl;
+}
 int main() {
-    std::string source = "print x +2;";
+    std::string source = "print 1 +2*3;";
 
     std::vector<Token> tokens = lex(source);
 
@@ -213,5 +280,9 @@ int main() {
 
     parsePrintStatement(tokens);
 
+    std::cout << std::endl;
+    std::cout << "=== EVALUATOR ===" << std::endl;
+
+    evaluatePrintStatement(tokens);
     return 0;
 }
