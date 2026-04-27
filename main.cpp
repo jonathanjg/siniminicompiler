@@ -14,6 +14,8 @@ enum class TokenType {
     Slash,
     Equal,
     Semicolon,
+    LeftParen,
+    RightParen,
     End
 };
 
@@ -44,6 +46,10 @@ std::string tokenTypeToString(TokenType type) {
             return "EQUAL";
         case TokenType::Semicolon:
             return "SEMICOLON";
+        case TokenType::LeftParen:
+            return "LEFT_PAREN";
+        case TokenType::RightParen:
+            return "RIGHT_PAREN";
         case TokenType::End:
             return "END";
     }
@@ -126,6 +132,18 @@ std::vector<Token> lex(const std::string& source) {
 
         if (c == ';') {
             tokens.push_back({TokenType::Semicolon, ";"});
+            i++;
+            continue;
+        }
+
+        if (c == '(') {
+            tokens.push_back({TokenType::LeftParen, "("});
+            i++;
+            continue;
+        }
+
+        if (c == ')') {
+            tokens.push_back({TokenType::RightParen, ")"});
             i++;
             continue;
         }
@@ -226,25 +244,43 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
 
     std::cout << "Valid print statement!" << std::endl;
 }
-int parseNumberValue(const std::vector<Token>& tokens, int& i) {
-    if (tokens[i].type != TokenType::Number) {
-        std::cout << "Error: expected number" << std::endl;
-        return 0;
+
+int parseExpression(const std::vector<Token>& tokens, int& i);
+
+int parseFactor(const std::vector<Token>& tokens, int& i) {
+    if (tokens[i].type == TokenType::Number) {
+        int value = std::stoi(tokens[i].text);
+        i++;
+        return value;
     }
 
-    int value = std::stoi(tokens[i].text);
-    i++;
-    return value;
+    if (tokens[i].type == TokenType::LeftParen) {
+        i++;
+
+        int value = parseExpression(tokens, i);
+
+        if (tokens[i].type != TokenType::RightParen) {
+            std::cout << "Error: expected ')' after expression" << std::endl;
+            return 0;
+        }
+
+        i++;
+        return value;
+    }
+
+    std::cout << "Error: expected number or '('" << std::endl;
+    return 0;
 }
 
+
 int parseTerm(const std::vector<Token>& tokens, int& i) {
-    int result = parseNumberValue(tokens, i);
+    int result = parseFactor(tokens, i);
 
     while (isTermOperator(tokens[i].type)) {
         TokenType op = tokens[i].type;
         i++;
 
-        int right = parseNumberValue(tokens, i);
+        int right = parseFactor(tokens, i);
 
         if (op == TokenType::Star) {
             result = result * right;
@@ -299,7 +335,7 @@ void evaluatePrintStatement(const std::vector<Token>& tokens) {
     std::cout << "Result: " << result << std::endl;
 }
 int main() {
-    std::string source = "print 1 +2*3;";
+    std::string source = "print (1 + 2) * 3;";
 
     std::vector<Token> tokens = lex(source);
 
