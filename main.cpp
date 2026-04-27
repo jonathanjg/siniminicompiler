@@ -7,7 +7,7 @@
 #include "token.h"
 
 int main() {
-    std::string source = "print (10 - 1) * 3 + 1 + 2;";
+    std::string source = "print x + 5;";
 
     std::vector<Token> tokens = lex(source);
 

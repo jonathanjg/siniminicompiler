@@ -21,6 +21,11 @@ void printAst(const Expr* expr, int indent) {
         return;
     }
 
+    if (const auto* variable = dynamic_cast<const VariableExpr*>(expr)) {
+        std::cout << spaces << "VariableExpr(" << variable->name << ")" << std::endl;
+        return;
+    }
+    
     std::cout << spaces << "Unknown Expr" << std::endl;
 }
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-
+#include <string>
 #include "token.h"
 
 struct Expr {
@@ -13,6 +13,13 @@ struct NumberExpr : Expr {
 
     explicit NumberExpr(int value)
         : value(value) {}
+};
+
+struct VariableExpr : Expr {
+    std::string name;
+
+    explicit VariableExpr(std::string name)
+        : name(std::move(name)) {}
 };
 
 struct BinaryExpr : Expr {

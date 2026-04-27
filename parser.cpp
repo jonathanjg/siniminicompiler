@@ -21,6 +21,12 @@ std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
         return std::make_unique<NumberExpr>(value);
     }
 
+    if (tokens[i].type == TokenType::Word) {
+        std::string name = tokens[i].text;
+        i++;
+        return std::make_unique<VariableExpr>(name);
+    }
+
     if (tokens[i].type == TokenType::LeftParen) {
         i++;
 
@@ -35,7 +41,7 @@ std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
         return expr;
     }
 
-    std::cout << "Error: expected number or '('" << std::endl;
+    std::cout << "Error: expected number, variable, or '('" << std::endl;
     return nullptr;
 }
 
