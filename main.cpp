@@ -188,59 +188,11 @@ bool isTermOperator(TokenType type) {
 
 
 
-int parseExpression(const std::vector<Token>& tokens, int& i);
-
-// Parser
-void parsePrintStatement(const std::vector<Token>& tokens) {
-    int i = 0;
-
-    if (tokens[i].type != TokenType::Print) {
-        std::cout << "Error: expected 'print'" << std::endl;
-        return;
-    }
-    i++;
-
-    parseExpression(tokens, i);
-
-    if (tokens[i].type != TokenType::Semicolon) {
-        std::cout << "Error: expected ';' after expression" << std::endl;
-        return;
-    }
-    i++;
-
-    if (tokens[i].type != TokenType::End) {
-        std::cout << "Error: unexpected tokens after statement" << std::endl;
-        return;
-    }
-
-    std::cout << "Valid print statement!" << std::endl;
-}
 
 
-int parseFactor(const std::vector<Token>& tokens, int& i) {
-    if (tokens[i].type == TokenType::Number) {
-        int value = std::stoi(tokens[i].text);
-        i++;
-        return value;
-    }
 
-    if (tokens[i].type == TokenType::LeftParen) {
-        i++;
 
-        int value = parseExpression(tokens, i);
 
-        if (tokens[i].type != TokenType::RightParen) {
-            std::cout << "Error: expected ')' after expression" << std::endl;
-            return 0;
-        }
-
-        i++;
-        return value;
-    }
-
-    std::cout << "Error: expected number or '('" << std::endl;
-    return 0;
-}
 
 std::unique_ptr<Expr> parseExpressionAst(const std::vector<Token>& tokens, int& i);
 
@@ -272,11 +224,19 @@ std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
 std::unique_ptr<Expr> parseTermAst(const std::vector<Token>& tokens, int& i) {
     std::unique_ptr<Expr> left = parseFactorAst(tokens, i);
 
+    if (!left) {
+        return nullptr;
+    }
+
     while (isTermOperator(tokens[i].type)) {
         TokenType op = tokens[i].type;
         i++;
 
         std::unique_ptr<Expr> right = parseFactorAst(tokens, i);
+
+        if (!right) {
+            return nullptr;
+        }
 
         left = std::make_unique<BinaryExpr>(
             op,
@@ -291,11 +251,19 @@ std::unique_ptr<Expr> parseTermAst(const std::vector<Token>& tokens, int& i) {
 std::unique_ptr<Expr> parseExpressionAst(const std::vector<Token>& tokens, int& i) {
     std::unique_ptr<Expr> left = parseTermAst(tokens, i);
 
+    if (!left) {
+        return nullptr;
+    }
+
     while (isExpressionOperator(tokens[i].type)) {
         TokenType op = tokens[i].type;
         i++;
 
         std::unique_ptr<Expr> right = parseTermAst(tokens, i);
+
+        if (!right) {
+            return nullptr;
+        }
 
         left = std::make_unique<BinaryExpr>(
             op,
@@ -324,72 +292,6 @@ void printAst(const Expr* expr, int indent = 0) {
     }
 
     std::cout << spaces << "Unknown Expr" << std::endl;
-}
-
-
-int parseTerm(const std::vector<Token>& tokens, int& i) {
-    int result = parseFactor(tokens, i);
-
-    while (isTermOperator(tokens[i].type)) {
-        TokenType op = tokens[i].type;
-        i++;
-
-        int right = parseFactor(tokens, i);
-
-        if (op == TokenType::Star) {
-            result = result * right;
-        } else if (op == TokenType::Slash) {
-            if (right == 0) {
-                std::cout << "Error: division by zero" << std::endl;
-                return 0;
-            }
-
-            result = result / right;
-        }
-    }
-
-    return result;
-}
-
-int parseExpression(const std::vector<Token>& tokens, int& i) {
-    int result = parseTerm(tokens, i);
-
-    while (isExpressionOperator(tokens[i].type)) {
-        TokenType op = tokens[i].type;
-        i++;
-
-        int right = parseTerm(tokens, i);
-
-        if (op == TokenType::Plus) {
-            result = result + right;
-        } else if (op == TokenType::Minus) {
-            result = result - right;
-        }
-    }
-
-    return result;
-}
-
-
-
-// Eval
-void evaluatePrintStatement(const std::vector<Token>& tokens) {
-    int i = 0;
-
-    if (tokens[i].type != TokenType::Print) {
-        std::cout << "Error: expected 'print'" << std::endl;
-        return;
-    }
-    i++;
-
-    int result = parseExpression(tokens, i);
-
-    if (tokens[i].type != TokenType::Semicolon) {
-        std::cout << "Error: expected ';' after expression" << std::endl;
-        return;
-    }
-
-    std::cout << "Result: " << result << std::endl;
 }
 
 int evaluateAst(const Expr* expr) {
@@ -427,8 +329,42 @@ int evaluateAst(const Expr* expr) {
     return 0;
 }
 
+void runPrintStatement(const std::vector<Token>& tokens) {
+    int i = 0;
+
+    if (tokens[i].type != TokenType::Print) {
+        std::cout << "Error: expected 'print'" << std::endl;
+        return;
+    }
+    i++;
+
+    std::unique_ptr<Expr> ast = parseExpressionAst(tokens, i);
+
+    if (!ast) {
+        return;
+    }
+
+    if (tokens[i].type != TokenType::Semicolon) {
+        std::cout << "Error: expected ';' after expression" << std::endl;
+        return;
+    }
+    i++;
+
+    if (tokens[i].type != TokenType::End) {
+        std::cout << "Error: unexpected tokens after statement" << std::endl;
+        return;
+    }
+
+    std::cout << "=== AST ===" << std::endl;
+    printAst(ast.get());
+
+    std::cout << std::endl;
+    std::cout << "=== AST EVALUATOR ===" << std::endl;
+    std::cout << "AST Result: " << evaluateAst(ast.get()) << std::endl;
+}
+
 int main() {
-    std::string source = "print (10 - 2 )* 3 + 1 + 2;";
+    std::string source = "print (10 - 2) * 3 + 1 + 2;";
 
     std::vector<Token> tokens = lex(source);
 
@@ -445,29 +381,8 @@ int main() {
     }
 
     std::cout << std::endl;
-    std::cout << "=== PARSER ===" << std::endl;
 
-    parsePrintStatement(tokens);
+    runPrintStatement(tokens);
 
-    std::cout << std::endl;
-    std::cout << "=== EVALUATOR ===" << std::endl;
-
-    evaluatePrintStatement(tokens);
-
-    std::cout << std::endl;
-    std::cout << "=== AST TEST ===" << std::endl;
-
-    int astIndex = 1; // skip PRINT
-    std::unique_ptr<Expr> ast = parseExpressionAst(tokens, astIndex);
-
-    if (ast) {
-        printAst(ast.get());
-    }
-
-    std::cout << std::endl;
-    std::cout << "=== AST EVALUATOR ===" << std::endl;
-
-    int astResult = evaluateAst(ast.get());
-    std::cout << "AST Result: " << astResult << std::endl;
     return 0;
 }
