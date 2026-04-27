@@ -272,6 +272,25 @@ std::unique_ptr<Expr> parseTermAst(const std::vector<Token>& tokens, int& i) {
     return left;
 }
 
+std::unique_ptr<Expr> parseExpressionAst(const std::vector<Token>& tokens, int& i) {
+    std::unique_ptr<Expr> left = parseTermAst(tokens, i);
+
+    while (isExpressionOperator(tokens[i].type)) {
+        TokenType op = tokens[i].type;
+        i++;
+
+        std::unique_ptr<Expr> right = parseTermAst(tokens, i);
+
+        left = std::make_unique<BinaryExpr>(
+            op,
+            std::move(left),
+            std::move(right)
+        );
+    }
+
+    return left;
+}
+
 void printAst(const Expr* expr, int indent = 0) {
     std::string spaces(indent, ' ');
 
@@ -357,7 +376,7 @@ void evaluatePrintStatement(const std::vector<Token>& tokens) {
     std::cout << "Result: " << result << std::endl;
 }
 int main() {
-    std::string source = "print 20 / 5;";
+    std::string source = "print 10 - 2 * 3 + 1 + 2;";
 
     std::vector<Token> tokens = lex(source);
 
@@ -387,7 +406,7 @@ int main() {
     std::cout << "=== AST TEST ===" << std::endl;
 
     int astIndex = 1; // skip PRINT
-    std::unique_ptr<Expr> ast = parseTermAst(tokens, astIndex);
+    std::unique_ptr<Expr> ast = parseExpressionAst(tokens, astIndex);
 
     if (ast) {
         printAst(ast.get());
