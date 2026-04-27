@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cctype>
+#include <memory>
 
 enum class TokenType {
     Let,
@@ -22,6 +23,26 @@ enum class TokenType {
 struct Token {
     TokenType type;
     std::string text;
+};
+
+struct Expr {
+    virtual ~Expr() = default;
+};
+
+struct NumberExpr : Expr {
+    int value;
+
+    explicit NumberExpr(int value)
+        : value(value) {}
+};
+
+struct BinaryExpr : Expr {
+    TokenType op;
+    std::unique_ptr<Expr> left;
+    std::unique_ptr<Expr> right;
+
+    BinaryExpr(TokenType op, std::unique_ptr<Expr> left, std::unique_ptr<Expr> right)
+        : op(op), left(std::move(left)), right(std::move(right)) {}
 };
 
 std::string tokenTypeToString(TokenType type) {
@@ -157,14 +178,6 @@ std::vector<Token> lex(const std::string& source) {
 }
 
 // Helper Functions
-bool isValue(TokenType type) {
-    return type == TokenType::Number || type == TokenType::Word;
-}
-
-bool isOperator(TokenType type) {
-    return type == TokenType::Plus || type == TokenType::Minus || type == TokenType::Star || type == TokenType::Slash;
-}
-
 bool isExpressionOperator(TokenType type) {
     return type == TokenType::Plus || type == TokenType::Minus;
 }
@@ -173,40 +186,13 @@ bool isTermOperator(TokenType type) {
     return type == TokenType::Star || type == TokenType::Slash;
 }
 
-int applyOperator(int left, TokenType op, int right) {
-    if (op == TokenType::Plus) {
-        return left + right;
-    }
 
-    if (op == TokenType::Minus) {
-        return left - right;
-    }
 
-    if (op == TokenType::Star) {
-        return left * right;
-    }
-
-    if (op == TokenType::Slash) {
-        if (right == 0) {
-            std::cout << "Error: division by zero" << std::endl;
-            return 0;
-        }
-
-        return left / right;
-    }
-
-    std::cout << "Error: unknown operator" << std::endl;
-    return 0;
-}
+int parseExpression(const std::vector<Token>& tokens, int& i);
 
 // Parser
 void parsePrintStatement(const std::vector<Token>& tokens) {
     int i = 0;
-
-    // // second debug loop
-    // for (const auto& t : tokens) {
-    //     std::cout << tokenTypeToString(t.type) << ": " << t.text << "\n";
-    // }
 
     if (tokens[i].type != TokenType::Print) {
         std::cout << "Error: expected 'print'" << std::endl;
@@ -214,22 +200,7 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
     }
     i++;
 
-    if (!isValue(tokens[i].type)) {
-        std::cout << "Error: expected number or variable after 'print'" << std::endl;
-        return;
-    }
-    i++;
-
-    while (isOperator(tokens[i].type)) {
-        i++;
-
-        if (!isValue(tokens[i].type)) {
-            std::cout << "Error: expected number or variable after operator" << std::endl;
-            return;
-        }
-
-        i++;
-    }
+    parseExpression(tokens, i);
 
     if (tokens[i].type != TokenType::Semicolon) {
         std::cout << "Error: expected ';' after expression" << std::endl;
@@ -245,7 +216,6 @@ void parsePrintStatement(const std::vector<Token>& tokens) {
     std::cout << "Valid print statement!" << std::endl;
 }
 
-int parseExpression(const std::vector<Token>& tokens, int& i);
 
 int parseFactor(const std::vector<Token>& tokens, int& i) {
     if (tokens[i].type == TokenType::Number) {
@@ -270,6 +240,55 @@ int parseFactor(const std::vector<Token>& tokens, int& i) {
 
     std::cout << "Error: expected number or '('" << std::endl;
     return 0;
+}
+
+std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
+    if (tokens[i].type == TokenType::Number) {
+        int value = std::stoi(tokens[i].text);
+        i++;
+        return std::make_unique<NumberExpr>(value);
+    }
+
+    std::cout << "Error: expected number" << std::endl;
+    return nullptr;
+}
+
+std::unique_ptr<Expr> parseTermAst(const std::vector<Token>& tokens, int& i) {
+    std::unique_ptr<Expr> left = parseFactorAst(tokens, i);
+
+    while (isTermOperator(tokens[i].type)) {
+        TokenType op = tokens[i].type;
+        i++;
+
+        std::unique_ptr<Expr> right = parseFactorAst(tokens, i);
+
+        left = std::make_unique<BinaryExpr>(
+            op,
+            std::move(left),
+            std::move(right)
+        );
+    }
+
+    return left;
+}
+
+void printAst(const Expr* expr, int indent = 0) {
+    std::string spaces(indent, ' ');
+
+    if (const auto* number = dynamic_cast<const NumberExpr*>(expr)) {
+        std::cout << spaces << "NumberExpr(" << number->value << ")" << std::endl;
+        return;
+    }
+
+    if (const auto* binary = dynamic_cast<const BinaryExpr*>(expr)) {
+        std::cout << spaces << "BinaryExpr(" << tokenTypeToString(binary->op) << ")" << std::endl;
+
+        printAst(binary->left.get(), indent + 2);
+        printAst(binary->right.get(), indent + 2);
+        return;
+    }
+
+    std::cout << spaces << "Unknown Expr" << std::endl;
 }
 
 
@@ -315,6 +334,9 @@ int parseExpression(const std::vector<Token>& tokens, int& i) {
 
     return result;
 }
+
+
+
 // Eval
 void evaluatePrintStatement(const std::vector<Token>& tokens) {
     int i = 0;
@@ -335,7 +357,7 @@ void evaluatePrintStatement(const std::vector<Token>& tokens) {
     std::cout << "Result: " << result << std::endl;
 }
 int main() {
-    std::string source = "print (1 + 2) * 3;";
+    std::string source = "print 20 / 5;";
 
     std::vector<Token> tokens = lex(source);
 
@@ -360,5 +382,15 @@ int main() {
     std::cout << "=== EVALUATOR ===" << std::endl;
 
     evaluatePrintStatement(tokens);
+
+    std::cout << std::endl;
+    std::cout << "=== AST TEST ===" << std::endl;
+
+    int astIndex = 1; // skip PRINT
+    std::unique_ptr<Expr> ast = parseTermAst(tokens, astIndex);
+
+    if (ast) {
+        printAst(ast.get());
+    }
     return 0;
 }
