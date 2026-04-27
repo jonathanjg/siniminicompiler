@@ -242,6 +242,8 @@ int parseFactor(const std::vector<Token>& tokens, int& i) {
     return 0;
 }
 
+std::unique_ptr<Expr> parseExpressionAst(const std::vector<Token>& tokens, int& i);
+
 std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
     if (tokens[i].type == TokenType::Number) {
         int value = std::stoi(tokens[i].text);
@@ -249,7 +251,21 @@ std::unique_ptr<Expr> parseFactorAst(const std::vector<Token>& tokens, int& i) {
         return std::make_unique<NumberExpr>(value);
     }
 
-    std::cout << "Error: expected number" << std::endl;
+    if (tokens[i].type == TokenType::LeftParen) {
+        i++;
+
+        std::unique_ptr<Expr> expr = parseExpressionAst(tokens, i);
+
+        if (tokens[i].type != TokenType::RightParen) {
+            std::cout << "Error: expected ')' after expression" << std::endl;
+            return nullptr;
+        }
+
+        i++;
+        return expr;
+    }
+
+    std::cout << "Error: expected number or '('" << std::endl;
     return nullptr;
 }
 
@@ -375,8 +391,44 @@ void evaluatePrintStatement(const std::vector<Token>& tokens) {
 
     std::cout << "Result: " << result << std::endl;
 }
+
+int evaluateAst(const Expr* expr) {
+    if (const auto* number = dynamic_cast<const NumberExpr*>(expr)) {
+        return number->value;
+    }
+
+    if (const auto* binary = dynamic_cast<const BinaryExpr*>(expr)) {
+        int left = evaluateAst(binary->left.get());
+        int right = evaluateAst(binary->right.get());
+
+        if (binary->op == TokenType::Plus) {
+            return left + right;
+        }
+
+        if (binary->op == TokenType::Minus) {
+            return left - right;
+        }
+
+        if (binary->op == TokenType::Star) {
+            return left * right;
+        }
+
+        if (binary->op == TokenType::Slash) {
+            if (right == 0) {
+                std::cout << "Error: division by zero" << std::endl;
+                return 0;
+            }
+
+            return left / right;
+        }
+    }
+
+    std::cout << "Error: unknown AST node" << std::endl;
+    return 0;
+}
+
 int main() {
-    std::string source = "print 10 - 2 * 3 + 1 + 2;";
+    std::string source = "print (10 - 2 )* 3 + 1 + 2;";
 
     std::vector<Token> tokens = lex(source);
 
@@ -411,5 +463,11 @@ int main() {
     if (ast) {
         printAst(ast.get());
     }
+
+    std::cout << std::endl;
+    std::cout << "=== AST EVALUATOR ===" << std::endl;
+
+    int astResult = evaluateAst(ast.get());
+    std::cout << "AST Result: " << astResult << std::endl;
     return 0;
 }
